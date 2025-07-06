@@ -1,7 +1,8 @@
 module ::Choujiang
   def self.choujiang_topics
-    # 查找所有待开奖的主题（用choujiang标签）
-    Topic.joins(:tags).where(tags: { name: SiteSetting.choujiang_tag }).where(closed: false)
+    topics = Topic.joins(:tags).where(tags: { name: SiteSetting.choujiang_tag }).where(closed: false)
+    Rails.logger.warn("【Choujiang调试】查到抽奖主题数量：#{topics.count}")
+    topics
   end
 
   def self.parse_choujiang_info(post)
