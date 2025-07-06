@@ -1,0 +1,7 @@
+plugins:
+  choujiang_enabled:
+    default: true
+    client: true
+  choujiang_tag:
+    default: "choujiang"
+    client: true
