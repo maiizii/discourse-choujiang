@@ -1,7 +1,9 @@
 module ::Choujiang
   def self.choujiang_topics
-    # 查找所有待开奖的主题（用choujiang标签）
-    Topic.joins(:tags).where(tags: { name: SiteSetting.choujiang_tag }).where(closed: false)
+    # 查找所有带有 choujiang_tag 的未关闭主题
+    Topic.joins(:tags)
+         .where(tags: { name: SiteSetting.choujiang_tag })
+         .where(closed: false)
   end
 
   def self.parse_choujiang_info(post)
@@ -16,9 +18,13 @@ module ::Choujiang
       info[:winners] = $1.to_i
     end
     if post.raw =~ /开奖时间[:：]\s*([0-9\- :]+)/
-      # 把时间当作北京时间解析，自动转为UTC
       time_str = $1.strip
-      info[:draw_time] = ActiveSupport::TimeZone['Beijing'].parse(time_str).utc rescue Time.parse(time_str).utc
+      # 以北京时间解析，转为UTC
+      begin
+        info[:draw_time] = ActiveSupport::TimeZone['Beijing'].parse(time_str).utc
+      rescue
+        info[:draw_time] = Time.parse(time_str).utc rescue nil
+      end
     end
     info
   end
@@ -38,9 +44,24 @@ module ::Choujiang
     winner_names.each_with_index do |name, idx|
       result += "#{idx+1}. @#{name}\n"
     end
-    # 将开奖结果直接添加到原帖内容后
+
+    # 1. 修改原帖内容，追加开奖结果
     first_post = topic.first_post
     new_raw = first_post.raw + result
     first_post.update!(raw: new_raw)
+
+    # 2. 给每个中奖者的首个回复添加中奖标注
+    winners.each_with_index do |user_id, idx|
+      # 找中奖用户在本主题的第一条回复（非一楼）
+      post = Post.where(topic_id: topic.id, user_id: user_id)
+                 .where.not(post_number: 1)
+                 .order(:post_number)
+                 .first
+      next unless post
+      mark = "\n\n---\n🎉 已第#{idx+1}个中奖"
+      unless post.raw.include?(mark)
+        post.update!(raw: post.raw + mark)
+      end
+    end
   end
 end
