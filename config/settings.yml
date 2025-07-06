@@ -1,11 +1,10 @@
 plugins:
-  discourse-choujiang:
-    choujiang_enabled:
-      default: true
-      client: true
-    choujiang_tag:
-      default: "抽奖活动"
-      client: true
-    choujiang_drawn_tag:
-      default: "开奖结果"
-      client: true
+  choujiang_enabled:
+    default: true
+    client: true
+  choujiang_tag:
+    default: "抽奖活动"
+    client: true
+  choujiang_drawn_tag:
+    default: "已开奖"
+    client: true
