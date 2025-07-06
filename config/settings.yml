@@ -7,5 +7,5 @@ plugins:
       default: "抽奖活动"
       client: true
     choujiang_drawn_tag:
-      default: "已经开奖"
+      default: "开奖结果"
       client: true
