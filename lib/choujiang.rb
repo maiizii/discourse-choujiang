@@ -40,20 +40,3 @@ module ::Choujiang
     PostCreator.create!(Discourse.system_user, topic_id: topic.id, raw: result)
   end
 end
-
-# 定时任务，每5分钟检查一次是否有到点的choujiang
-scheduler = Discourse::Application.config.scheduler
-scheduler.every '5m' do
-  if SiteSetting.choujiang_enabled?
-    ::Choujiang.choujiang_topics.each do |topic|
-      first_post = topic.first_post
-      info = ::Choujiang.parse_choujiang_info(first_post)
-      next unless info[:draw_time] && Time.now >= info[:draw_time]
-      next if topic.tags.include?("choujiang_drawn") # 已开奖
-      winners = ::Choujiang.select_winners(topic, info)
-      ::Choujiang.announce_winners(topic, winners, info)
-      topic.tags << "choujiang_drawn"
-      topic.save
-    end
-  end
-end
