@@ -4,3 +4,9 @@ zh_CN:
       categories:
         discourse_choujiang: "抽奖"
         "discourse choujiang": "抽奖"
+  admin_js:
+    admin:
+      site_settings:
+        categories:
+          discourse_choujiang: "抽奖"
+          "discourse choujiang": "抽奖"
