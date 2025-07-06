@@ -1,8 +1,7 @@
 module ::Choujiang
   def self.choujiang_topics
-    topics = Topic.joins(:tags).where(tags: { name: SiteSetting.choujiang_tag }).where(closed: false)
-    Rails.logger.warn("【Choujiang调试】查到抽奖主题数量：#{topics.count}")
-    topics
+    # 查找所有待开奖的主题（用choujiang标签）
+    Topic.joins(:tags).where(tags: { name: SiteSetting.choujiang_tag }).where(closed: false)
   end
 
   def self.parse_choujiang_info(post)
@@ -35,10 +34,13 @@ module ::Choujiang
 
   def self.announce_winners(topic, winners, info)
     winner_names = User.where(id: winners).pluck(:username)
-    result = "🎉 **抽奖已开奖！**\n\n抽奖名称：#{info[:title]}\n奖品：#{info[:prize]}\n获奖人数：#{info[:winners]}\n\n恭喜以下用户中奖：\n"
+    result = "\n\n🎉 **抽奖已开奖！**\n\n抽奖名称：#{info[:title]}\n奖品：#{info[:prize]}\n获奖人数：#{info[:winners]}\n\n恭喜以下用户中奖：\n"
     winner_names.each_with_index do |name, idx|
       result += "#{idx+1}. @#{name}\n"
     end
-    PostCreator.create!(Discourse.system_user, topic_id: topic.id, raw: result)
+    # 将开奖结果直接添加到原帖内容后
+    first_post = topic.first_post
+    new_raw = first_post.raw + result
+    first_post.update!(raw: new_raw)
   end
 end
