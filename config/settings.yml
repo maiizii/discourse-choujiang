@@ -1,4 +1,3 @@
-name: "抽奖"
 choujiang_enabled:
   default: true
   client: true
