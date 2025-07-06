@@ -17,7 +17,9 @@ module ::Choujiang
       info[:winners] = $1.to_i
     end
     if post.raw =~ /开奖时间[:：]\s*([0-9\- :]+)/
-      info[:draw_time] = Time.parse($1)
+      # 把时间当作北京时间解析，自动转为UTC
+      time_str = $1.strip
+      info[:draw_time] = ActiveSupport::TimeZone['Beijing'].parse(time_str).utc rescue Time.parse(time_str).utc
     end
     info
   end
