@@ -1,4 +1,4 @@
-discourse-choujiang:
+discourse_choujiang:
   choujiang_enabled:
     default: true
     client: true
