@@ -1,4 +1,4 @@
-name: "自动抽奖"
+name: "抽奖"
 choujiang_enabled:
   default: true
   client: true
