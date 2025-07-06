@@ -1,6 +1,5 @@
 module ::Choujiang
   def self.choujiang_topics
-    # 查找所有带有 choujiang_tag 的未关闭主题
     Topic.joins(:tags)
          .where(tags: { name: SiteSetting.choujiang_tag })
          .where(closed: false)
@@ -19,7 +18,6 @@ module ::Choujiang
     end
     if post.raw =~ /开奖时间[:：]\s*([0-9\- :]+)/
       time_str = $1.strip
-      # 以北京时间解析，转为UTC
       begin
         info[:draw_time] = ActiveSupport::TimeZone['Beijing'].parse(time_str).utc
       rescue
@@ -52,7 +50,6 @@ module ::Choujiang
 
     # 2. 给每个中奖者的首个回复添加中奖标注
     winners.each_with_index do |user_id, idx|
-      # 找中奖用户在本主题的第一条回复（非一楼）
       post = Post.where(topic_id: topic.id, user_id: user_id)
                  .where.not(post_number: 1)
                  .order(:post_number)
@@ -62,6 +59,12 @@ module ::Choujiang
       unless post.raw.include?(mark)
         post.update!(raw: post.raw + mark)
       end
+    end
+
+    # 3. 修改主题标题，前加【已开奖】
+    unless topic.title.start_with?("【已开奖】")
+      topic.title = "【已开奖】" + topic.title
+      topic.save!
     end
   end
 end
