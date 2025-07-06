@@ -28,7 +28,6 @@ module ::Choujiang
     replies = Post.where(topic_id: topic.id)
                   .where.not(user_id: topic.user_id) # 剔除发起人
                   .where.not(post_number: 1)         # 剔除一楼
-                  .order(:created_at)
     unique_users = replies.select(:user_id).distinct.pluck(:user_id)
     winners = unique_users.sample(info[:winners])
     winners
