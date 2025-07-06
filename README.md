@@ -1,4 +1,4 @@
-# discourse-choujiang
+# discourse-抽奖插件
 
 ## 功能简介
 - 发起人可在指定板块/标签下按模板发帖发起抽奖
