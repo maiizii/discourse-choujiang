@@ -22,7 +22,7 @@ class CreateChoujiangTables < ActiveRecord::Migration[7.0]
       t.integer :choujiang_record_id, null: false, index: true
       t.integer :user_id, null: false, index: true
       t.integer :post_id, null: false, index: true         # 参与回复的帖子ID
-      t.boolean :winner, default: false                    # 是否中奖
+      t.integer :winner, default: nil                      # 中奖排名（1,2,3...，未中奖为NULL）
       t.timestamps
     end
 
