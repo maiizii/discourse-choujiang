@@ -1,0 +1,17 @@
+<ModalBody @title="插入抽奖模板">
+  <label>抽奖名称</label>
+  <Input @value={{this.title}} />
+  <label>奖品</label>
+  <Input @value={{this.prize}} />
+  <label>获奖人数</label>
+  <Input @type="number" @value={{this.numWinners}} />
+  <label>开奖时间</label>
+  <DatePicker
+    @value={{this.drawTime}}
+    @onChange={{this.setDrawTime}}
+    @includeTime={{true}}
+  />
+  <label>其他说明</label>
+  <Textarea @value={{this.extraInfo}} />
+  <DButton @label="插入模板" @action={{this.insertTemplate}} class="btn-primary" />
+</ModalBody>
