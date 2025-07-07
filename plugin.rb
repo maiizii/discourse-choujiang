@@ -4,10 +4,6 @@
 # authors: macgow
 # url: https://github.com/macgowge/discourse-choujiang
 
-register_asset "javascripts/discourse/initializers/add-choujiang-template-button.js"
-register_asset "javascripts/discourse/components/choujiang-template-modal.js"
-register_asset "javascripts/discourse/templates/components/choujiang-template-modal.hbs"
-
 enabled_site_setting :choujiang_enabled
 
 after_initialize do
