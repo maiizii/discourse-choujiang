@@ -1,3 +1,5 @@
+console.log("测试 asset 是否被加载");
+
 import { withPluginApi } from "discourse/lib/plugin-api";
 
 export default {
