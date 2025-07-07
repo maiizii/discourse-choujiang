@@ -27,11 +27,11 @@ module ::Jobs
         ::Choujiang.announce_winners(topic, winners, info)
 
         # 正确添加可配置的开奖标签
-        tag = Tag.find_or_create_by(name: drawn_tag)
-        unless topic.tags.include?(tag)
-          topic.tags << tag
-          topic.save
-        end
+        # tag = Tag.find_or_create_by(name: drawn_tag)
+        # unless topic.tags.include?(tag)
+        #   topic.tags << tag
+        #   topic.save
+        # end
       end
     end
   end
