@@ -5,25 +5,11 @@ module ::Choujiang
          .where(closed: false)
   end
 
+  # 发帖参数解析与校验：兼容原有 info 字段
   def self.parse_choujiang_info(post)
-    info = {}
-    if post.raw =~ /抽奖名称[:：]\s*(.+)/
-      info[:title] = $1.strip
-    end
-    if post.raw =~ /奖品[:：]\s*(.+)/
-      info[:prize] = $1.strip
-    end
-    if post.raw =~ /获奖人数[:：]\s*(\d+)/
-      info[:winners] = $1.to_i
-    end
-    if post.raw =~ /开奖时间[:：]\s*([0-9\- :]+)/
-      time_str = $1.strip
-      begin
-        info[:draw_time] = ActiveSupport::TimeZone['Beijing'].parse(time_str).utc
-      rescue
-        info[:draw_time] = Time.parse(time_str).utc rescue nil
-      end
-    end
+    require_relative "choujiang_validator"
+    errors, info = ::ChoujiangValidator.parse_and_validate(post.raw)
+    raise Discourse::InvalidParameters, errors.join("，") if errors.any?
     info
   end
 
