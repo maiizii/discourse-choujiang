@@ -8,5 +8,8 @@ enabled_site_setting :choujiang_enabled
 
 after_initialize do
   require_relative 'lib/choujiang'
+  require_relative 'lib/choujiang_record'
+  require_relative 'lib/choujiang_participant'
+  require_relative 'lib/lottery_validator'
   require_relative 'jobs/auto_choujiang_draw.rb'
 end

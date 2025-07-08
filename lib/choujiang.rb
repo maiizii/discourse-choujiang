@@ -16,7 +16,7 @@ module ::Choujiang
     if post.raw =~ /获奖人数[:：]\s*(\d+)/
       info[:winners] = $1.to_i
     end
-    if post.raw =~ /开奖时间[:：]\s*([0-9\- :]+)/
+    if post.raw =~ /开奖时间[:：]\s*(.+)/
       time_str = $1.strip
       begin
         info[:draw_time] = ActiveSupport::TimeZone['Beijing'].parse(time_str).utc
@@ -24,7 +24,47 @@ module ::Choujiang
         info[:draw_time] = Time.parse(time_str).utc rescue nil
       end
     end
+    if post.raw =~ /其他说明[:：]\s*(.+)/
+      info[:description] = $1.strip
+    end
     info
+  end
+
+  # Validate lottery information with comprehensive error checking
+  def self.validate_lottery_info(post)
+    info = parse_choujiang_info(post)
+    validator = Choujiang::LotteryValidator.new
+    
+    topic = post.topic
+    is_valid = validator.validate_lottery_info(info, topic.id, post.id, post.user_id)
+    
+    {
+      valid: is_valid,
+      info: info,
+      errors: validator.error_messages,
+      lottery_record: is_valid ? validator.create_lottery_record(info, topic.id, post.id, post.user_id) : nil
+    }
+  end
+
+  # Create a lottery record if validation passes
+  def self.create_lottery_from_post(post)
+    validation_result = validate_lottery_info(post)
+    
+    unless validation_result[:valid]
+      Rails.logger.error("Lottery validation failed: #{validation_result[:errors].join(', ')}")
+      return { success: false, errors: validation_result[:errors] }
+    end
+
+    begin
+      lottery_record = validation_result[:lottery_record]
+      lottery_record.save!
+      
+      Rails.logger.info("Successfully created lottery record ID: #{lottery_record.id}")
+      { success: true, lottery_record: lottery_record }
+    rescue ActiveRecord::RecordInvalid => e
+      Rails.logger.error("Failed to save lottery record: #{e.message}")
+      { success: false, errors: [e.message] }
+    end
   end
 
   def self.select_winners(topic, info)
@@ -66,5 +106,36 @@ module ::Choujiang
       topic.title = "【已开奖】" + topic.title
       topic.save!
     end
+  end
+
+  # Hook for validating lottery posts on creation/update
+  def self.validate_lottery_post(post)
+    # Only validate if this is a lottery topic
+    return { valid: true } unless is_lottery_topic?(post.topic)
+    
+    # Only validate the first post (lottery creation post)
+    return { valid: true } unless post.post_number == 1
+    
+    validation_result = validate_lottery_info(post)
+    
+    unless validation_result[:valid]
+      Rails.logger.warn("Lottery post validation failed for post #{post.id}: #{validation_result[:errors].join(', ')}")
+    end
+    
+    validation_result
+  end
+
+  # Check if a topic is a lottery topic based on tags
+  def self.is_lottery_topic?(topic)
+    return false unless topic&.tags&.any?
+    
+    lottery_tag = SiteSetting.choujiang_tag
+    topic.tags.any? { |tag| tag.name == lottery_tag }
+  end
+
+  # Utility method to get validation errors for a post
+  def self.get_lottery_validation_errors(post)
+    validation_result = validate_lottery_post(post)
+    validation_result[:valid] ? [] : validation_result[:errors]
   end
 end
