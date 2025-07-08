@@ -12,8 +12,7 @@ after_initialize do
   require_relative 'jobs/auto_choujiang_draw.rb'
 
   # 发帖内容校验，防止不合格的抽奖帖写入数据库
-  on(:validate_post) do |validator|
-    post = validator.post
+  on(:validate_post) do |post|
     # 只校验首帖+指定抽奖标签
     next unless post.post_number == 1
     topic_tags = post.topic&.tags&.map(&:name) || []
@@ -21,6 +20,6 @@ after_initialize do
     next unless topic_tags.include?(tag)
 
     errors, _info = ::ChoujiangValidator.parse_and_validate(post.raw)
-    errors.each { |e| validator.errors.add(:base, e) } if errors.any?
+    errors.each { |e| post.errors.add(:base, e) } if errors.any?
   end
 end
