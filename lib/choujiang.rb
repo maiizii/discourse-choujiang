@@ -5,7 +5,7 @@ module ::Choujiang
          .where(closed: false)
   end
 
-  # 发帖参数解析与校验：兼容原有 info 字段
+  # 发帖参数解析与校验：兼容原有 info 字段，供开奖等其他流程使用
   def self.parse_choujiang_info(post)
     require_relative "choujiang_validator"
     errors, info = ::ChoujiangValidator.parse_and_validate(post.raw)
