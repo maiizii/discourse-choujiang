@@ -49,26 +49,4 @@ module ::ChoujiangValidator
     else key.to_s
     end
   end
-
-  # 供Discourse PostValidator注册自定义校验
-  def self.add_post_validator(validator)
-    validator.class_eval do
-      validate :choujiang_post_format, if: -> { is_choujiang_topic? && is_first_post? }
-
-      def choujiang_post_format
-        errors, _info = ::ChoujiangValidator.parse_and_validate(post_raw)
-        errors.each { |e| self.errors.add(:base, e) } if errors.any?
-      end
-
-      def is_first_post?
-        self.post_number == 1
-      end
-
-      def is_choujiang_topic?
-        topic_tags = self.topic&.tags&.map(&:name) || []
-        tag = SiteSetting.choujiang_tag
-        topic_tags.include?(tag)
-      end
-    end
-  end
 end
