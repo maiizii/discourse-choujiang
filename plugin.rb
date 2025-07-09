@@ -10,37 +10,29 @@ after_initialize do
   require_relative 'lib/choujiang'
   require_relative 'jobs/auto_choujiang_draw.rb'
 
-  # ------- 关键：自定义 PostValidator -------
-  class ::ChoujiangPostValidator
-    def initialize(post)
-      @post = post
-    end
+  module ::ChoujiangPostValidatorPatch
+    def validate_choujiang_post
+      Rails.logger.warn("choujiang validator called!")
+      if self.post.post_number == 1
+        tags = if self.post.respond_to?(:tags) && self.post.tags.present?
+          self.post.tags
+        elsif self.post.topic && self.post.topic.respond_to?(:tags)
+          self.post.topic.tags.map(&:name)
+        else
+          []
+        end
 
-    def validate(errors)
-      # 只校验主题首贴
-      return unless @post.post_number == 1
-
-      # 获取标签名称
-      tags = if @post.respond_to?(:tags) && @post.tags.present?
-        @post.tags
-      elsif @post.topic && @post.topic.respond_to?(:tags)
-        @post.topic.tags.map(&:name)
-      else
-        []
+        if tags.include?("抽奖活动")
+          self.errors.add(:base, "缺少抽奖名称") unless self.post.raw.match?(/抽奖名称[:：]\s*.+/)
+          self.errors.add(:base, "缺少奖品") unless self.post.raw.match?(/奖品[:：]\s*.+/)
+          self.errors.add(:base, "缺少获奖人数") unless self.post.raw.match?(/获奖人数[:：]\s*\d+/)
+          self.errors.add(:base, "缺少开奖时间") unless self.post.raw.match?(/开奖时间[:：]\s*[\d\- :]+/)
+        end
       end
-
-      # 只对含“抽奖活动”标签的主题校验（你可以根据实际标签名修改）
-      return unless tags.include?("抽奖活动")
-
-      errors.add(:base, "缺少抽奖名称") unless @post.raw.match?(/抽奖名称[:：]\s*.+/)
-      errors.add(:base, "缺少奖品") unless @post.raw.match?(/奖品[:：]\s*.+/)
-      errors.add(:base, "缺少获奖人数") unless @post.raw.match?(/获奖人数[:：]\s*\d+/)
-      errors.add(:base, "缺少开奖时间") unless @post.raw.match?(/开奖时间[:：]\s*[\d\- :]+/)
+      super if defined?(super)
     end
   end
 
-  # 注册到 Discourse 的 PostValidator 链
-  add_to_class(:post_validator, :validate_choujiang_post) do
-    ::ChoujiangPostValidator.new(self.post).validate(self.errors)
-  end
+  # 通过 prepend，将自定义校验方法挂载到 PostValidator
+  PostValidator.prepend(::ChoujiangPostValidatorPatch)
 end
