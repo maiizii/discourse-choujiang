@@ -16,32 +16,17 @@ module ::Jobs
 
       topics.each do |topic|
         first_post = topic.first_post
-        unless first_post
-          # Rails.logger.warn("choujiang: topic #{topic.id} has no first_post, skip")
-          next
-        end
+        next unless first_post
 
         info = ::Choujiang.parse_choujiang_info(first_post)
-        unless info
-          # Rails.logger.warn("choujiang: topic #{topic.id} parse_choujiang_info returned nil, skip")
-          next
-        end
+        next unless info
 
-        unless info[:draw_time] && Time.now >= info[:draw_time]
-          # Rails.logger.warn("choujiang: topic #{topic.id} not time to draw or missing draw_time, skip")
-          next
-        end
+        next unless info[:draw_time] && Time.now >= info[:draw_time]
 
-        if topic.tags.exists?(name: drawn_tag)
-          # Rails.logger.warn("choujiang: topic #{topic.id} already drawn, skip")
-          next
-        end
+        next if topic.tags.exists?(name: drawn_tag)
 
         winners = ::Choujiang.select_winners(topic, info)
-        unless winners && winners.any?
-          # Rails.logger.warn("choujiang: topic #{topic.id} no winners found, skip")
-          next
-        end
+        next unless winners && winners.any?
 
         winner_users = User.where(id: winners)
         # Rails.logger.warn("choujiang: topic #{topic.id} winners: #{winner_users.map(&:username).join(', ')}")
@@ -75,7 +60,11 @@ module ::Jobs
           topic.tags << tag
           topic.save
         end
-        # Rails.logger.warn("choujiang: topic #{topic.id} draw complete, tag added")
+
+        # 开奖后：封贴不可回复，不可编辑主贴
+        topic.update!(closed: true)
+        topic.first_post.update!(locked_by_id: Discourse.system_user.id, locked_at: Time.now)
+        # Rails.logger.warn("choujiang: topic #{topic.id} draw complete, tag added, closed and locked")
       end
     end
   end
