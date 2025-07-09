@@ -32,7 +32,7 @@ module ::ChoujiangValidator
           errors << "开奖时间必须是将来时间" if info[:draw_time] <= Time.now
         rescue
           info[:draw_time] = nil
-          errors << "开奖时间格式无效（正确格式2025-01-01 20:00）"
+          errors << "开奖时间格式无效"
         end
       end
     end
