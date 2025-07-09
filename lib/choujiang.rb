@@ -6,7 +6,7 @@ module ::Choujiang
   end
 
   # 发帖参数解析与校验：兼容原有 info 字段，供开奖等其他流程使用
-  # 增加 raise_on_error 参数，后台任务用 false
+  # 增加 raise_on_error 参数，后台任务用 false，发帖用默认 true
   def self.parse_choujiang_info(post, raise_on_error: true)
     require_relative "choujiang_validator"
     errors, info = ::ChoujiangValidator.parse_and_validate(post.raw)
