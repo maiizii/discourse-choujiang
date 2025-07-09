@@ -6,11 +6,14 @@ module ::Choujiang
   end
 
   # 发帖参数解析与校验：兼容原有 info 字段，供开奖等其他流程使用
-  def self.parse_choujiang_info(post)
+  # 增加 raise_on_error 参数，后台任务用 false
+  def self.parse_choujiang_info(post, raise_on_error: true)
     require_relative "choujiang_validator"
     errors, info = ::ChoujiangValidator.parse_and_validate(post.raw)
-    raise Discourse::InvalidParameters, errors.join("，") if errors.any?
-    info
+    if errors.any? && raise_on_error
+      raise Discourse::InvalidParameters, errors.join("，")
+    end
+    [errors, info]
   end
 
   def self.select_winners(topic, info)
