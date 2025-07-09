@@ -10,30 +10,23 @@ after_initialize do
   require_relative 'lib/choujiang'
   require_relative 'jobs/auto_choujiang_draw.rb'
 
-  # 官方推荐的注册方式
-  DiscourseEvent.register(:post_process_cooked) do |doc, post|
-    # 这个事件可以确认插件代码被执行
-    Rails.logger.warn("choujiang post_process_cooked called!") # 你应该能在日志中看到这行
-  end
+  # 测试 after_initialize 是否执行
+  Rails.logger.warn("choujiang plugin after_initialize called!")
 
-  # 重点：注册自定义发帖校验器（3.2+官方推荐）
+  # Discourse 3.x 官方推荐内容校验方法
   register_post_custom_validator("choujiang_validator") do |raw, topic, user|
-    Rails.logger.warn("choujiang custom validator called!") # 一定要能看到
-
+    Rails.logger.warn("choujiang custom validator called!")
     # 只校验主题首贴且有“抽奖活动”标签
-    if topic.nil? || topic.first_post_id.nil?
-      # 新建主题时topic还未创建，这时没法校验标签
-      next
+    if topic && topic.first_post_id == topic.id
+      tags = topic.tags.map(&:name) rescue []
+      if tags.include?("抽奖活动")
+        errors = []
+        errors << "缺少抽奖名称" unless raw.match?(/抽奖名称[:：]\s*.+/)
+        errors << "缺少奖品" unless raw.match?(/奖品[:：]\s*.+/)
+        errors << "缺少获奖人数" unless raw.match?(/获奖人数[:：]\s*\d+/)
+        errors << "缺少开奖时间" unless raw.match?(/开奖时间[:：]\s*[\d\- :]+/)
+        errors # 返回 errors 数组，内容会显示在前端
+      end
     end
-
-    tags = topic.tags.map(&:name) rescue []
-    next unless tags.include?("抽奖活动")
-
-    errors = []
-    errors << "缺少抽奖名称" unless raw.match?(/抽奖名称[:：]\s*.+/)
-    errors << "缺少奖品" unless raw.match?(/奖品[:：]\s*.+/)
-    errors << "缺少获奖人数" unless raw.match?(/获奖人数[:：]\s*\d+/)
-    errors << "缺少开奖时间" unless raw.match?(/开奖时间[:：]\s*[\d\- :]+/)
-    errors
   end
 end
