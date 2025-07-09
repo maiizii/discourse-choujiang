@@ -7,8 +7,8 @@
 enabled_site_setting :choujiang_enabled
 
 after_initialize do
-  require_relative 'lib/choujiang'
-  require_relative 'jobs/auto_choujiang_draw.rb'
+  require_relative 'lib/choujiang' if File.exist?(File.expand_path('lib/choujiang.rb', __dir__))
+  require_relative 'jobs/auto_choujiang_draw.rb' if File.exist?(File.expand_path('jobs/auto_choujiang_draw.rb', __dir__))
 
   Rails.logger.warn("choujiang after_initialize!")
 
