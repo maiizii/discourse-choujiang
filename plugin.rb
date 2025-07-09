@@ -13,11 +13,11 @@ after_initialize do
 
   # 发帖内容校验，防止不合格的抽奖帖写入数据库
   on(:validate_post) do |post|
-    # 只校验首帖+指定抽奖标签
     next unless post.post_number == 1
-    topic_tags = post.topic&.tags&.map(&:name) || []
+    # 发帖时标签还未归入topic，只能用post.tags，编辑时topic.tags有
+    tags = (post.respond_to?(:tags) && post.tags.presence) || (post.topic&.tags&.map(&:name) || [])
     tag = SiteSetting.choujiang_tag
-    next unless topic_tags.include?(tag)
+    next unless tags.include?(tag)
 
     errors, _info = ::ChoujiangValidator.parse_and_validate(post.raw)
     errors.each { |e| post.errors.add(:base, e) } if errors.any?
