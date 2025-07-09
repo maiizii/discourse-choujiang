@@ -13,9 +13,23 @@ after_initialize do
   # 新建抽奖主题自动进入待审核，主贴不可编辑
   DiscourseEvent.on(:post_created) do |post, opts, user|
     if post.post_number == 1 && post.topic.tags.pluck(:name).include?("抽奖活动")
-      # 使用官方Reviewable API，让帖子进入审核队列，并给用户正确提示
+      post.approved = false
+      post.save!(validate: false)
+      post.topic.visible = false
+      post.topic.save!(validate: false)
       ReviewableQueuedPost.needs_review!(target: post, created_by: user)
       post.update!(locked_by_id: Discourse.system_user.id, locked_at: Time.now)
+    end
+  end
+
+  # 审核通过时自动公开主题
+  on(:reviewable_accepted) do |reviewable, reviewable_score|
+    if reviewable.is_a?(ReviewableQueuedPost)
+      post = reviewable.target
+      if post&.topic&.tags&.pluck(:name)&.include?("抽奖活动")
+        post.topic.visible = true
+        post.topic.save!(validate: false)
+      end
     end
   end
 end
