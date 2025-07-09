@@ -13,8 +13,7 @@ after_initialize do
   # 新增：发帖时内容格式校验
   on(:validate_post) do |post|
     next unless post.post_number == 1
-    tags = (post.respond_to?(:tags) && post.tags.presence) || (post.topic&.tags&.map(&:name) || [])
-    next unless tags.include?("抽奖活动")
+    
     # 校验四个字段
     required = [
       [/抽奖名称[:：]\s*.+/, "缺少抽奖名称"],
