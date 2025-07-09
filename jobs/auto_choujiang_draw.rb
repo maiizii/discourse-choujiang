@@ -43,11 +43,12 @@ module ::Jobs
           next
         end
 
-        Rails.logger.warn("choujiang: topic #{topic.id} winners: #{winners.map(&:username).join(', ')}")
+        winner_users = User.where(id: winners)
+        Rails.logger.warn("choujiang: topic #{topic.id} winners: #{winner_users.map(&:username).join(', ')}")
 
-        ::Choujiang.announce_winners(topic, winners, info)
+        ::Choujiang.announce_winners(topic, winner_users, info)
 
-        winners.each do |winner|
+        winner_users.each do |winner|
           begin
             PostCreator.create!(
               Discourse.system_user,
