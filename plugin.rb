@@ -6,8 +6,6 @@
 
 enabled_site_setting :choujiang_enabled
 
-Rails.logger.warn("choujiang plugin loaded at top-level!")
-
 after_initialize do
   require_relative 'lib/choujiang'
   require_relative 'jobs/auto_choujiang_draw.rb'
