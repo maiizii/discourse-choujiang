@@ -10,29 +10,29 @@ after_initialize do
   require_relative 'lib/choujiang'
   require_relative 'jobs/auto_choujiang_draw.rb'
 
-  module ::ChoujiangPostValidatorPatch
-    def validate_choujiang_post
-      Rails.logger.warn("choujiang validator called!")
-      if self.post.post_number == 1
-        tags = if self.post.respond_to?(:tags) && self.post.tags.present?
-          self.post.tags
-        elsif self.post.topic && self.post.topic.respond_to?(:tags)
-          self.post.topic.tags.map(&:name)
-        else
-          []
-        end
+  module ::ChoujiangPostCreatorPatch
+    def validate
+      super # 先执行原有校验
 
-        if tags.include?("抽奖活动")
-          self.errors.add(:base, "缺少抽奖名称") unless self.post.raw.match?(/抽奖名称[:：]\s*.+/)
-          self.errors.add(:base, "缺少奖品") unless self.post.raw.match?(/奖品[:：]\s*.+/)
-          self.errors.add(:base, "缺少获奖人数") unless self.post.raw.match?(/获奖人数[:：]\s*\d+/)
-          self.errors.add(:base, "缺少开奖时间") unless self.post.raw.match?(/开奖时间[:：]\s*[\d\- :]+/)
+      # 日志确认是否生效
+      Rails.logger.warn("choujiang postcreator validate called!")
+
+      if @opts[:raw].present? && @opts[:tags].present?
+        # 只校验主题首贴
+        if @opts[:post_number].to_i == 1
+          tags = Array(@opts[:tags]).map(&:to_s)
+          if tags.include?("抽奖活动")
+            errors = []
+            errors << "缺少抽奖名称" unless @opts[:raw].match?(/抽奖名称[:：]\s*.+/)
+            errors << "缺少奖品" unless @opts[:raw].match?(/奖品[:：]\s*.+/)
+            errors << "缺少获奖人数" unless @opts[:raw].match?(/获奖人数[:：]\s*\d+/)
+            errors << "缺少开奖时间" unless @opts[:raw].match?(/开奖时间[:：]\s*[\d\- :]+/)
+            errors.each { |msg| @errors.add(:base, msg) }
+          end
         end
       end
-      super if defined?(super)
     end
   end
 
-  # 通过 prepend，将自定义校验方法挂载到 PostValidator
-  PostValidator.prepend(::ChoujiangPostValidatorPatch)
+  ::PostCreator.prepend(::ChoujiangPostCreatorPatch)
 end
