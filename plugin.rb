@@ -1,6 +1,6 @@
 # name: discourse-choujiang
 # about: 定时自动开奖的抽奖（choujiang）插件，支持自定义规则与自动开奖
-# version: 0.3
+# version: 0.4
 # authors: macgow
 # url: https://github.com/macgowge/discourse-choujiang
 
@@ -34,8 +34,11 @@ after_initialize do
     end
   end
 
-  unless Post.ancestors.include?(::ChoujiangPostValidation)
-    Post.prepend(::ChoujiangPostValidation)
-    Rails.logger.warn("choujiang post validation prepended!")
+  # 使用 to_prepare 保证每个worker都能 patch 到
+  Discourse::Application.config.to_prepare do
+    unless Post.ancestors.include?(::ChoujiangPostValidation)
+      Post.prepend(::ChoujiangPostValidation)
+      Rails.logger.warn("choujiang post validation prepended!")
+    end
   end
 end
