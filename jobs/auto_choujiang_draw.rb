@@ -5,13 +5,9 @@ module ::Jobs
     every 5.minutes
 
     def execute(args)
-      # Rails.logger.warn("choujiang: start job at #{Time.now}")
-
       return unless SiteSetting.choujiang_enabled?
 
       topics = ::Choujiang.choujiang_topics
-      # Rails.logger.warn("choujiang: found #{topics.count} choujiang topics")
-
       drawn_tag = SiteSetting.choujiang_drawn_tag.presence || "choujiang_drawn"
 
       topics.each do |topic|
@@ -22,15 +18,12 @@ module ::Jobs
         next unless info
 
         next unless info[:draw_time] && Time.now >= info[:draw_time]
-
         next if topic.tags.exists?(name: drawn_tag)
 
         winners = ::Choujiang.select_winners(topic, info)
         next unless winners && winners.any?
 
         winner_users = User.where(id: winners)
-        # Rails.logger.warn("choujiang: topic #{topic.id} winners: #{winner_users.map(&:username).join(', ')}")
-
         ::Choujiang.announce_winners(topic, winner_users, info)
 
         winner_users.each do |winner|
@@ -49,9 +42,8 @@ module ::Jobs
                 请关注后续发奖通知，或与管理员联系领奖事宜。
               MD
             )
-            # Rails.logger.warn("choujiang: 通知已发送给获奖者 #{winner.username}")
           rescue => e
-            # Rails.logger.warn("choujiang: 通知获奖者失败 #{winner&.username}: #{e}")
+            Rails.logger.warn("choujiang: 通知获奖者失败 #{winner&.username}: #{e}")
           end
         end
 
@@ -64,7 +56,6 @@ module ::Jobs
         # 开奖后：封贴不可回复，不可编辑主贴
         topic.update!(closed: true)
         topic.first_post.update!(locked_by_id: Discourse.system_user.id, locked_at: Time.now)
-        # Rails.logger.warn("choujiang: topic #{topic.id} draw complete, tag added, closed and locked")
       end
     end
   end
