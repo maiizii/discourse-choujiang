@@ -1,6 +1,6 @@
 # name: discourse-choujiang
 # about: 定时自动开奖的抽奖（choujiang）插件，支持自定义规则与自动开奖
-# version: 3.0
+# version: 0.2
 # authors: macgow
 # url: https://github.com/macgowge/discourse-choujiang
 
