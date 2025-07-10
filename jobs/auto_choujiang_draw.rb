@@ -81,11 +81,8 @@ module ::Jobs
         # 开奖后自动封贴（禁止回帖）
         topic.update!(closed: true)
         # 开奖后自动锁定首贴（禁止编辑）
-        topic.first_post.update!(
-          locked_by_id: Discourse.system_user.id, # 锁定操作者为系统用户
-          locked_at: Time.now                     # 锁定时间为当前
-        )
-        # 如果将来需要自定义解封时间或解锁规则，可以在这里扩展
+        # 注意：locked_at 字段不存在，只能设置 locked_by_id
+        topic.first_post.update!(locked_by_id: Discourse.system_user.id)
         # ===============================================================
       end
     end
