@@ -10,7 +10,7 @@ module ::Choujiang
     if post.raw =~ /抽奖名称[:：]\s*(.+)/
       info[:title] = $1.strip
     end
-    if post.raw =~ /奖品[:：]\s*(.+)/
+    if post.raw =~ /活动奖品[:：]\s*(.+)/
       info[:prize] = $1.strip
     end
     if post.raw =~ /获奖人数[:：]\s*(\d+)/
@@ -38,7 +38,7 @@ module ::Choujiang
 
   def self.announce_winners(topic, winners, info)
     winner_names = User.where(id: winners).pluck(:username)
-    # result = "\n\n🎉 **抽奖已开奖！**\n\n抽奖名称：#{info[:title]}\n奖品：#{info[:prize]}\n获奖人数：#{info[:winners]}\n\n恭喜以下用户中奖：\n"
+    # result = "\n\n🎉 **抽奖已开奖！**\n\n抽奖名称：#{info[:title]}\n活动奖品：#{info[:prize]}\n获奖人数：#{info[:winners]}\n\n恭喜以下用户中奖：\n"
     result = "\n\n🎉 **抽奖活动已开奖！** 🎉\n\n恭喜以下用户中奖：\n"
     winner_names.each_with_index do |name, idx|
       result += "#{idx+1}. @#{name}\n"
