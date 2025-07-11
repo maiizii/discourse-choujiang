@@ -61,7 +61,7 @@ module ::Jobs
 
                 奖品：#{info[:prize] || "（奖品信息未填写）"}
 
-                请关注后续发奖通知，或与管理员联系领奖事宜。
+                请与抽奖活动组织者联系领奖事宜。
               MD
             )
             # Rails.logger.warn("choujiang: 通知已发送给获奖者 #{winner.username}")
