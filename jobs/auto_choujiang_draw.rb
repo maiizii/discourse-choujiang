@@ -59,7 +59,7 @@ module ::Jobs
               raw: <<~MD
                 恭喜你在 [#{topic.title}](#{topic.relative_url}) 抽奖活动中获奖！
 
-                奖品：#{info[:prize] || "（奖品信息未填写）"}
+                活动奖品：#{info[:prize] || "（奖品信息未填写）"}
 
                 请与抽奖活动组织者联系领奖事宜。
               MD
