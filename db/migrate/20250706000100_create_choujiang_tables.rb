@@ -8,10 +8,10 @@ class CreateChoujiangTables < ActiveRecord::Migration[7.0]
       t.integer :post_id, null: false, index: true         # 发起抽奖的帖子ID
       t.integer :user_id, null: false, index: true         # 发起人ID
       t.string  :choujiang_title, null: false              # 抽奖名称
-      t.string  :choujiang_prize, null: false              # 奖品
+      t.string  :choujiang_prize, null: false              # 活动奖品
       t.integer :winner_count, null: false, default: 1     # 中奖人数
       t.datetime :draw_time, null: false                   # 开奖时间
-      t.text    :description                               # 其他说明
+      t.text    :description                               # 简单说明
       t.boolean :drawn, default: false                     # 是否已开奖
       t.datetime :drawn_at                                 # 实际开奖时间
       t.timestamps
