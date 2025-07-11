@@ -38,7 +38,8 @@ module ::Choujiang
 
   def self.announce_winners(topic, winners, info)
     winner_names = User.where(id: winners).pluck(:username)
-    result = "\n\n🎉 **抽奖已开奖！**\n\n抽奖名称：#{info[:title]}\n奖品：#{info[:prize]}\n获奖人数：#{info[:winners]}\n\n恭喜以下用户中奖：\n"
+    # result = "\n\n🎉 **抽奖已开奖！**\n\n抽奖名称：#{info[:title]}\n奖品：#{info[:prize]}\n获奖人数：#{info[:winners]}\n\n恭喜以下用户中奖：\n"
+    result = "\n\n🎉 **抽奖活动已开奖！** 🎉\n\n恭喜以下用户中奖：\n"
     winner_names.each_with_index do |name, idx|
       result += "#{idx+1}. @#{name}\n"
     end
@@ -55,7 +56,7 @@ module ::Choujiang
                  .order(:post_number)
                  .first
       next unless post
-      mark = "\n\n---\n🎉 已第#{idx+1}个中奖"
+      mark = "\n\n---\n🎉 **已第#{idx+1}个中奖！** 🎉"
       unless post.raw.include?(mark)
         post.update!(raw: post.raw + mark)
       end
