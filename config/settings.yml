@@ -1,4 +1,4 @@
-discourse-choujiang:
+plugins:
   choujiang_enabled:
     default: true
     client: true
@@ -8,3 +8,5 @@ discourse-choujiang:
   choujiang_drawn_tag:
     default: "抽奖结束"
     client: true
+    
+category: "discourse_choujiang"
