@@ -1,10 +1,9 @@
-plugins:
-  choujiang_enabled:
-    default: true
-    client: true
-  choujiang_tag:
-    default: "抽奖活动"
-    client: true
-  choujiang_drawn_tag:
-    default: "抽奖结束"
-    client: true
+choujiang_enabled:
+  default: true
+  client: true
+choujiang_tag:
+  default: "抽奖活动"
+  client: true
+choujiang_drawn_tag:
+  default: "抽奖结束"
+  client: true
