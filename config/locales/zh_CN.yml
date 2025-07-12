@@ -1,3 +1,10 @@
+zh_CN:
+  admin_js:
+    admin:
+      site_settings:
+        categories:
+          discourse_choujiang: "抽奖"
+          
 admin_js:
   admin:
     site_settings:
