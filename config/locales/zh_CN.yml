@@ -1,0 +1,5 @@
+admin_js:
+  admin:
+    site_settings:
+      categories:
+        discourse_choujiang: "抽奖"
