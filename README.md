@@ -34,5 +34,5 @@
 ## 安装方法
 参考 Discourse 插件安装说明，将本插件仓库添加到 app.yml
 ```
-- git clone https://github.com/macgowge/discourse-choujiang.git
+- git clone https://github.com/maiizii/discourse-choujiang.git
 ```
