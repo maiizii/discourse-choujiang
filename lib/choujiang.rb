@@ -1,189 +1,240 @@
-module ::Choujiang
-  def self.choujiang_topics
-    Topic.joins(:tags)
-         .where(tags: { name: SiteSetting.choujiang_tag })
-         .where(closed: false)
-  end
+# frozen_string_literal: true
 
+module ::Choujiang
+
+  PLUGIN_NAME ||= "discourse-choujiang".freeze
+  
+  # 解析抽奖信息的方法，将从帖子内容中提取关键信息
   def self.parse_choujiang_info(post)
-    info = {}
-    if post.raw =~ /抽奖名称[:：]\s*(.+)/
+    return nil if post.nil?
+
+    info = { post_id: post.id, topic_id: post.topic_id, user_id: post.user_id }
+    
+    # 尝试解析帖子中的抽奖信息
+    if post.raw =~ /抽奖名称[:：]\s*(.+?)[\n\r]/
       info[:title] = $1.strip
     end
-    if post.raw =~ /活动奖品[:：]\s*(.+)/
+    
+    if post.raw =~ /活动奖品[:：]\s*(.+?)[\n\r]/
       info[:prize] = $1.strip
     end
+    
     if post.raw =~ /获奖人数[:：]\s*(\d+)/
-      info[:winners] = $1.to_i
+      info[:winners_count] = $1.to_i
     end
+    
+    # 时区处理 - 使用上海时区解析时间
     if post.raw =~ /开奖时间[:：]\s*([0-9\- :]+)/
       time_str = $1.strip
+      Rails.logger.warn("choujiang debug: 原始时间字符串 #{time_str}")
+      
       begin
-        # 添加调试日志
-        Rails.logger.warn("choujiang debug: 原始时间字符串 #{time_str}")
-        parsed_time = ActiveSupport::TimeZone['Beijing'].parse(time_str).utc
-        Rails.logger.warn("choujiang debug: 解析后的UTC时间 #{parsed_time}, 当前UTC时间: #{Time.now.utc}")
-        info[:draw_time] = parsed_time
+        # 将输入时间视为上海时区(UTC+8)时间，然后转换为UTC存储
+        parsed_time = ActiveSupport::TimeZone['Asia/Shanghai'].parse(time_str)
+        Rails.logger.warn("choujiang debug: 解析后的上海时间 #{parsed_time}, UTC时间 #{parsed_time.utc}")
+        info[:draw_time] = parsed_time.utc
       rescue => e
-        Rails.logger.warn("choujiang debug: 时间解析错误 #{e}")
+        Rails.logger.warn("choujiang debug: 时间解析错误 #{e.message}")
+        # 备用解析方法
         begin
           info[:draw_time] = Time.parse(time_str).utc
-          Rails.logger.warn("choujiang debug: 使用备用解析，UTC时间: #{info[:draw_time]}")
+          Rails.logger.warn("choujiang debug: 备用解析时间 #{info[:draw_time]}")
         rescue => e2
-          Rails.logger.warn("choujiang debug: 备用解析也失败 #{e2}")
+          Rails.logger.warn("choujiang debug: 备用时间解析也失败 #{e2.message}")
           info[:draw_time] = nil
         end
       end
     end
-    # 解析最低积分要求
+    
+    # 解析积分要求 (v0.4新功能)
     if post.raw =~ /最低积分[:：]\s*(\d+)/
       info[:min_points] = $1.to_i
-      Rails.logger.warn("choujiang debug: 设置了最低积分要求 #{info[:min_points]}")
+      Rails.logger.warn("choujiang debug: 解析到最低积分要求 #{info[:min_points]}")
     else
-      info[:min_points] = 0  # 默认为0，表示不限制
-      Rails.logger.warn("choujiang debug: 未设置积分要求，默认为0")
+      info[:min_points] = 0
+      Rails.logger.warn("choujiang debug: 未设置最低积分要求")
     end
+    
+    if post.raw =~ /简单说明[:：]\s*(.+?)[\n\r]/
+      info[:description] = $1.strip
+    end
+    
+    # 检查必要信息是否完整
+    return nil if info[:title].nil? || info[:prize].nil? || info[:winners_count].nil? || info[:draw_time].nil?
+    
+    # 记录日志，方便调试
+    Rails.logger.warn("choujiang debug: 成功解析抽奖信息: #{info.inspect}")
+    
     info
   end
-
-  def self.select_winners(topic, info)
-    Rails.logger.warn("choujiang debug: 开始选择中奖者，主题ID: #{topic.id}")
+  
+  # 获取有效的参与者
+  def self.get_participants(topic_id, user_id, min_points = 0)
+    topic = Topic.find_by(id: topic_id)
+    return [] if topic.nil?
     
-    replies = Post.where(topic_id: topic.id)
-                  .where.not(user_id: topic.user_id) # 剔除发起人
-                  .where.not(post_number: 1)         # 剔除一楼
+    # 获取除了发帖人以外的所有回复者
+    participants = Set.new
+    user_ids_with_points = {}
     
-    unique_users = replies.select(:user_id).distinct.pluck(:user_id)
-    Rails.logger.warn("choujiang debug: 初始参与用户数: #{unique_users.length}")
+    PostCreator.create(
+      Discourse.system_user,
+      topic_id: topic_id,
+      raw: "正在统计参与者...",
+      skip_validations: true
+    )
     
-    # 根据最低积分过滤用户
-    if info[:min_points] && info[:min_points] > 0
-      filtered_users = []
-      unique_users.each do |user_id|
-        user = User.find_by(id: user_id)
-        next unless user
+    # 获取所有回帖用户
+    Post.where(topic_id: topic_id).where.not(user_id: user_id).find_each do |post|
+      next if post.user_id == user_id # 跳过发帖人
+      
+      # 如果设置了积分要求，检查用户积分
+      if min_points > 0
+        # 尝试多种方式获取用户积分，兼容不同版本的discourse-gamification插件
+        user_points = get_user_points(post.user_id)
+        Rails.logger.warn("choujiang debug: 用户#{post.user_id}的积分为#{user_points}, 最低要求#{min_points}")
         
-        # 尝试不同的方式获取用户积分
-        points = nil
-        
-        # 方法1：通过PluginStore获取
-        points = PluginStore.get('discourse-gamification', "user_#{user_id}_points")
-        Rails.logger.warn("choujiang debug: 用户 #{user.username}(#{user_id}) 通过方法1获取积分: #{points}")
-        
-        # 方法2：尝试不同的键名
-        if points.nil?
-          points = PluginStore.get('discourse-gamification', "points_#{user_id}")
-          Rails.logger.warn("choujiang debug: 用户 #{user.username}(#{user_id}) 通过方法2获取积分: #{points}")
-        end
-        
-        # 方法3：尝试通过用户元数据
-        if points.nil?
-          points = user.custom_fields['gamification_points'].to_i rescue 0
-          Rails.logger.warn("choujiang debug: 用户 #{user.username}(#{user_id}) 通过方法3获取积分: #{points}")
-        end
-        
-        # 如果所有方法都失败，使用默认值0
-        points ||= 0
-        
-        if points >= info[:min_points]
-          filtered_users << user_id
-          Rails.logger.warn("choujiang debug: 用户 #{user.username}(#{user_id}) 符合积分要求 (#{points} >= #{info[:min_points]})")
+        # 只有积分满足要求的用户才能参与抽奖
+        if user_points >= min_points
+          participants.add(post.user_id)
+          user_ids_with_points[post.user_id] = user_points
         else
-          Rails.logger.warn("choujiang debug: 用户 #{user.username}(#{user_id}) 不符合积分要求 (#{points} < #{info[:min_points]})")
+          Rails.logger.warn("choujiang debug: 用户#{post.user_id}积分不足，不参与抽奖")
         end
+      else
+        # 没有积分要求，所有回帖用户都可以参与
+        participants.add(post.user_id)
       end
-      unique_users = filtered_users
-      Rails.logger.warn("choujiang debug: 过滤后符合积分要求的用户数: #{unique_users.length}")
     end
     
-    # 如果符合条件的用户数少于要求的获奖人数，调整获奖人数
-    winners_count = [unique_users.length, info[:winners]].min
-    Rails.logger.warn("choujiang debug: 最终获奖人数: #{winners_count}, 请求获奖人数: #{info[:winners]}")
+    Rails.logger.warn("choujiang debug: 共有#{participants.size}名有效参与者")
     
-    if winners_count > 0
-      winners = unique_users.sample(winners_count)
-      Rails.logger.warn("choujiang debug: 已选择中奖者: #{winners.join(', ')}")
-      return winners
-    else
-      Rails.logger.warn("choujiang debug: 无符合条件的用户，无法开奖")
-      return []
-    end
+    # 返回有效参与者的user_id数组
+    participants.to_a
   end
-
-  def self.announce_winners(topic, winners, info)
-    Rails.logger.warn("choujiang debug: 开始公布中奖结果，主题ID: #{topic.id}, 中奖者数: #{winners.length}")
+  
+  # 获取用户积分 - 兼容多种积分存储方式
+  def self.get_user_points(user_id)
+    return 0 if user_id.nil?
     
-    winner_names = User.where(id: winners).pluck(:username)
-    Rails.logger.warn("choujiang debug: 中奖者用户名: #{winner_names.join(', ')}")
+    # 方法1: 通过discourse-gamification插件的PluginStore获取积分
+    points = PluginStore.get('discourse-gamification', "user_#{user_id}_points")
+    Rails.logger.warn("choujiang debug: 方法1获取用户#{user_id}积分: #{points}")
+    return points.to_i if points.present?
     
-    result = "\n\n🎉 **抽奖活动已开奖！** 🎉\n\n"
+    # 方法2: 尝试其他可能的存储键名
+    points = PluginStore.get('discourse-gamification', "points_#{user_id}")
+    Rails.logger.warn("choujiang debug: 方法2获取用户#{user_id}积分: #{points}")
+    return points.to_i if points.present?
     
-    # 显示最低积分要求信息
-    if info[:min_points] && info[:min_points] > 0
-      result += "参与要求：最低积分 #{info[:min_points]} 点\n\n"
+    # 方法3: 如果有提供API方法
+    if defined?(::DiscourseGamification) && ::DiscourseGamification.respond_to?(:get_user_points)
+      points = ::DiscourseGamification.get_user_points(user_id)
+      Rails.logger.warn("choujiang debug: 方法3获取用户#{user_id}积分: #{points}")
+      return points.to_i if points.present?
     end
     
-    result += "恭喜以下用户中奖：\n"
+    # 如果都获取不到，默认返回0积分
+    Rails.logger.warn("choujiang debug: 无法获取用户#{user_id}积分，默认为0")
+    0
+  end
+  
+  # 抽奖并发布结果
+  def self.draw_and_announce(choujiang_info)
+    Rails.logger.warn("choujiang debug: 开始抽奖流程, 信息: #{choujiang_info.inspect}")
     
-    if winner_names.any?
-      winner_names.each_with_index do |name, idx|
-        result += "#{idx+1}. @#{name}\n"
-      end
-    else
-      result += "（没有符合条件的中奖者）\n"
-    end
-
-    # 1. 修改原帖内容，追加开奖结果
-    first_post = topic.first_post
-    new_raw = first_post.raw + result
-    first_post.update!(raw: new_raw)
-    Rails.logger.warn("choujiang debug: 已更新原帖内容，添加中奖结果")
-
-    # 2. 给每个中奖者的首个回复添加中奖标注
-    winners.each_with_index do |user_id, idx|
-      post = Post.where(topic_id: topic.id, user_id: user_id)
-                 .where.not(post_number: 1)
-                 .order(:post_number)
-                 .first
-      next unless post
-      mark = "\n\n---\n🎉 **已第#{idx+1}个中奖！** 🎉"
-      unless post.raw.include?(mark)
-        post.update!(raw: post.raw + mark)
-        Rails.logger.warn("choujiang debug: 已在中奖者 #{User.find_by(id: user_id)&.username} 的回复中添加标注")
-      end
-    end
-
-    # 3. 修改主题标题，前加【已开奖】
-    unless topic.title.start_with?("【已开奖】")
-      topic.title = "【已开奖】" + topic.title
-      topic.save!
-      Rails.logger.warn("choujiang debug: 已更新主题标题，添加【已开奖】前缀")
+    topic_id = choujiang_info[:topic_id]
+    user_id = choujiang_info[:user_id]
+    winners_count = choujiang_info[:winners_count]
+    min_points = choujiang_info[:min_points] || 0
+    
+    participants = get_participants(topic_id, user_id, min_points)
+    
+    if participants.empty?
+      # 没有参与者的情况
+      Rails.logger.warn("choujiang debug: 没有有效参与者")
+      PostCreator.create(
+        Discourse.system_user,
+        topic_id: topic_id,
+        raw: "## 抽奖结果公告\n\n很遗憾，没有符合条件的参与者。\n\n#{min_points > 0 ? "本次抽奖要求最低积分：#{min_points}" : ""}\n\n抽奖已结束，感谢关注！",
+        skip_validations: true
+      )
+      return
     end
     
-    # 4. 给中奖者发送通知
-    winners.each do |user_id|
+    # 如果参与人数少于获奖人数，调整获奖人数
+    actual_winners_count = [winners_count, participants.size].min
+    Rails.logger.warn("choujiang debug: 有效参与者#{participants.size}人，将抽取#{actual_winners_count}名获奖者")
+    
+    # 随机抽取获奖者
+    winners = participants.shuffle[0...actual_winners_count]
+    Rails.logger.warn("choujiang debug: 抽取的获奖者ID: #{winners.inspect}")
+    
+    # 准备获奖者名单
+    winner_names = []
+    winners.each do |winner_id|
+      user = User.find_by(id: winner_id)
+      next unless user
+      winner_names << "@#{user.username}"
+      
+      # 发送私信通知获奖者
       begin
-        user = User.find_by(id: user_id)
-        next unless user
-        
-        PostCreator.create!(
+        pm = PostCreator.create(
           Discourse.system_user,
           target_usernames: user.username,
           archetype: Archetype.private_message,
-          subtype: TopicSubtype.system_message,
-          title: "恭喜你中奖啦！",
-          raw: <<~MD
-            恭喜你在 [#{topic.title}](#{topic.relative_url}) 抽奖活动中获奖！
-
-            活动奖品：#{info[:prize] || "（奖品信息未填写）"}
-
-            请与抽奖活动组织者联系领奖事宜。
-          MD
+          title: "恭喜您在「#{choujiang_info[:title]}」中获奖！",
+          raw: "恭喜您在「#{choujiang_info[:title]}」抽奖活动中获奖！\n\n奖品: #{choujiang_info[:prize]}\n\n请关注后续领奖信息。",
+          skip_validations: true
         )
-        Rails.logger.warn("choujiang debug: 已向中奖者 #{user.username} 发送通知")
+        Rails.logger.warn("choujiang debug: 已向获奖者#{user.username}发送私信通知")
       rescue => e
-        Rails.logger.warn("choujiang debug: 向中奖者 #{User.find_by(id: user_id)&.username} 发送通知失败: #{e}")
+        Rails.logger.warn("choujiang debug: 向获奖者#{user.username}发送私信失败: #{e.message}")
       end
     end
+    
+    # 在主题中公布结果
+    result_message = <<~TEXT
+    ## 抽奖结果公告
+    
+    **活动名称**: #{choujiang_info[:title]}
+    **奖品**: #{choujiang_info[:prize]}
+    **参与人数**: #{participants.size}人
+    #{min_points > 0 ? "**积分要求**: 最低#{min_points}积分" : ""}
+    
+    **获奖名单**:
+    #{winner_names.join(", ")}
+    
+    恭喜以上获奖者！请等待后续领奖通知。
+    TEXT
+    
+    # 创建结果公告帖
+    Rails.logger.warn("choujiang debug: 创建抽奖结果公告帖")
+    PostCreator.create(
+      Discourse.system_user,
+      topic_id: topic_id,
+      raw: result_message,
+      skip_validations: true
+    )
+    
+    # 更新主题状态
+    topic = Topic.find_by(id: topic_id)
+    if topic
+      # 添加"抽奖结束"标签
+      topic.append_tags(["抽奖结束"])
+      
+      # 更新标题添加【已开奖】前缀
+      unless topic.title.include?("【已开奖】")
+        topic.title = "【已开奖】#{topic.title}"
+        topic.save!
+        Rails.logger.warn("choujiang debug: 已更新主题标题添加【已开奖】前缀")
+      end
+      
+      # 锁定主题
+      topic.update_status('closed', true, Discourse.system_user)
+      Rails.logger.warn("choujiang debug: 已锁定主题")
+    end
+    
+    Rails.logger.warn("choujiang debug: 抽奖流程完成")
   end
 end
