@@ -46,7 +46,7 @@ module ::Jobs
         winner_users = User.where(id: winners)
         # Rails.logger.warn("choujiang: topic #{topic.id} winners: #{winner_users.map(&:username).join(', ')}")
 
-        ::Choujiang.announce_winners(topic, winner_users, info)
+        ::Choujiang.announce_winners(topic, winners, info)
 
         winner_users.each do |winner|
           begin
@@ -81,9 +81,6 @@ module ::Jobs
         # 开奖后自动封贴（禁止回帖）
         topic.update!(closed: true)
         # 开奖后自动锁定首贴（禁止编辑）
-        # 注意：locked_at 字段不存在，只能设置 locked_by_id
-        topic.first_post.update!(locked_by_id: Discourse.system_user.id)
-        # ===============================================================
       end
     end
   end
