@@ -24,6 +24,12 @@ module ::Choujiang
         info[:draw_time] = Time.parse(time_str).utc rescue nil
       end
     end
+    # 新增：解析最低积分要求
+    if post.raw =~ /最低积分[:：]\s*(\d+)/
+      info[:min_points] = $1.to_i
+    else
+      info[:min_points] = 0  # 默认为0，表示不限制
+    end
     info
   end
 
@@ -32,14 +38,41 @@ module ::Choujiang
                   .where.not(user_id: topic.user_id) # 剔除发起人
                   .where.not(post_number: 1)         # 剔除一楼
     unique_users = replies.select(:user_id).distinct.pluck(:user_id)
-    winners = unique_users.sample(info[:winners])
+    
+    # 新增：根据最低积分过滤用户
+    if info[:min_points] && info[:min_points] > 0
+      filtered_users = []
+      unique_users.each do |user_id|
+        user = User.find_by(id: user_id)
+        next unless user
+        
+        # 通过PluginStore获取用户积分
+        points = PluginStore.get('discourse-gamification', "user_#{user_id}_points") || 0
+        
+        if points >= info[:min_points]
+          filtered_users << user_id
+        end
+      end
+      unique_users = filtered_users
+    end
+    
+    # 如果符合条件的用户数少于要求的获奖人数，调整获奖人数
+    winners_count = [unique_users.length, info[:winners]].min
+    winners = unique_users.sample(winners_count)
     winners
   end
 
   def self.announce_winners(topic, winners, info)
     winner_names = User.where(id: winners).pluck(:username)
     # result = "\n\n🎉 **抽奖已开奖！**\n\n抽奖名称：#{info[:title]}\n活动奖品：#{info[:prize]}\n获奖人数：#{info[:winners]}\n\n恭喜以下用户中奖：\n"
-    result = "\n\n🎉 **抽奖活动已开奖！** 🎉\n\n恭喜以下用户中奖：\n"
+    result = "\n\n🎉 **抽奖活动已开奖！** 🎉\n\n"
+    
+    # 新增：显示最低积分要求信息
+    if info[:min_points] && info[:min_points] > 0
+      result += "参与要求：最低积分 #{info[:min_points]} 点\n\n"
+    end
+    
+    result += "恭喜以下用户中奖：\n"
     winner_names.each_with_index do |name, idx|
       result += "#{idx+1}. @#{name}\n"
     end
