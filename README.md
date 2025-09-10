@@ -41,3 +41,6 @@
 - git clone https://github.com/maiizii/discourse-choujiang.git
 ```
 
+## 依赖插件
+- discourse-gamification：提供用户积分功能支持（v0.4及以上版本需要）
+
