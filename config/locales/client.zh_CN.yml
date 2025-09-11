@@ -4,3 +4,6 @@ zh_CN:
       site_settings:
         categories:
           discourse_choujiang: "抽奖"
+  js:
+    choujiang:
+      minimum_points_notice: "本次抽奖要求最低积分：%{minimum_points}，你当前积分：%{user_points}。未达最低积分的回复将不会参与抽奖。"
