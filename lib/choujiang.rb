@@ -24,6 +24,10 @@ module ::Choujiang
         info[:draw_time] = Time.parse(time_str).utc rescue nil
       end
     end
+    # 新增：最低积分（可选，未写则为 0，表示不限制）
+    if post.raw =~ /最低积分[:：]\s*(\d+)/
+      info[:minimum_points] = $1.to_i
+    end
     info
   end
 
@@ -32,6 +36,13 @@ module ::Choujiang
                   .where.not(user_id: topic.user_id) # 剔除发起人
                   .where.not(post_number: 1)         # 剔除一楼
     unique_users = replies.select(:user_id).distinct.pluck(:user_id)
+
+    # 新增：按最低积分过滤（默认 0 不限制）
+    min_points = info[:minimum_points].to_i
+    if min_points > 0
+      unique_users = ::DiscourseChoujiang::ParticipantFilter.filter_by_min_points(unique_users, min_points)
+    end
+
     winners = unique_users.sample(info[:winners])
     winners
   end
