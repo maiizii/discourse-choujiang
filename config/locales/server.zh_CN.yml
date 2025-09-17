@@ -1,4 +1,7 @@
 zh_CN:
+  site_settings:
+    categories:
+      discourse_choujiang: "抽奖"
   choujiang:
     not_enough_candidates: "本次抽奖候选人数不足，未能开奖。"
     create:
