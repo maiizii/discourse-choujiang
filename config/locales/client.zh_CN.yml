@@ -4,3 +4,22 @@ zh_CN:
       site_settings:
         categories:
           discourse_choujiang: "抽奖"
+zh_CN:
+  js:
+    choujiang:
+      create:
+        page_title: "发布抽奖活动"
+        field:
+          title: "抽奖名称"
+          prize: "活动奖品"
+          winners: "获奖人数"
+          draw_time: "开奖时间 (YYYY-MM-DD HH:MM)"
+          minimum_points: "最低积分（可选）"
+          description: "简单说明"
+          extra_body: "附加正文（可选，显示在抽奖块后面）"
+          category: "分类（可选）"
+        submit: "发布"
+        submitting: "发布中..."
+        success: "已创建抽奖主题"
+        go_topic: "前往主题"
+        error: "提交失败"
