@@ -7,13 +7,13 @@
 enabled_site_setting :choujiang_enabled
 
 after_initialize do
-  # 现有 require 保持
+  # 保留原有 require
   require_relative 'lib/discourse_choujiang/gamification_points'
   require_relative 'lib/discourse_choujiang/participant_filter'
   require_relative 'lib/choujiang'
   require_relative 'jobs/auto_choujiang_draw.rb'
 
-  # --- 新增：Engine + 路由 ---
+  # --- 如果之前已定义 Engine，请确认不要重复定义 ---
   module ::DiscourseChoujiang
     class Engine < ::Rails::Engine
       engine_name "discourse_choujiang_create"
@@ -21,11 +21,13 @@ after_initialize do
     end
   end
 
+  # 后端创建接口：POST /lottery/create
   DiscourseChoujiang::Engine.routes.draw do
-    post "/create" => "create#create"   # POST /choujiang/create
+    post "/create" => "create#create"
   end
 
+  # 将 Engine 挂到 /lottery
   Discourse::Application.routes.append do
-    mount ::DiscourseChoujiang::Engine, at: "/choujiang"
+    mount ::DiscourseChoujiang::Engine, at: "/lottery"
   end
 end
