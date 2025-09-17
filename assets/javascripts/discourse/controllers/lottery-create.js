@@ -1,53 +1,62 @@
 import Controller from "@ember/controller";
-import { action } from "@ember/object";
 import { ajax } from "discourse/lib/ajax";
 import { popupAjaxError } from "discourse/lib/ajax-error";
 
-export default class LotteryCreateController extends Controller {
-  submitting = false;
-  created = false;
-  topicUrl = null;
+export default Controller.extend({
+  submitting: false,
+  created: false,
+  topicUrl: null,
 
-  get currentUserPresent() {
-    return !!this.currentUser;
-  }
-
-  get canSubmit() {
-    if (!this.currentUserPresent) return false;
+  canSubmit: function () {
+    if (!this.get("currentUser")) return false;
     const m = this.model;
-    return m.title.trim() && m.prize.trim() && m.winners > 0 && m.draw_time.trim();
-  }
+    if (!m) return false;
+    return (
+      m.title.trim() &&
+      m.prize.trim() &&
+      m.winners > 0 &&
+      m.draw_time.trim()
+    );
+  }.property(
+    "currentUser",
+    "model.title",
+    "model.prize",
+    "model.winners",
+    "model.draw_time"
+  ),
 
-  @action
-  submit() {
-    if (!this.canSubmit || this.submitting) return;
+  actions: {
+    submit() {
+      if (!this.get("canSubmit") || this.submitting) return;
+      this.set("submitting", true);
 
-    this.submitting = true;
-    ajax("/lottery/create", {
-      type: "POST",
-      data: {
-        title: this.model.title,
-        prize: this.model.prize,
-        winners: this.model.winners,
-        draw_time: this.model.draw_time,
-        minimum_points: this.model.minimum_points,
-        description: this.model.description,
-        extra_body: this.model.extra_body,
-        category_id: this.model.category_id
-      }
-    })
-      .then((r) => {
-        this.created = true;
-        this.topicUrl = r.topic_url;
+      const m = this.model;
+      ajax("/lottery/create", {
+        type: "POST",
+        data: {
+          title: m.title,
+            prize: m.prize,
+            winners: m.winners,
+            draw_time: m.draw_time,
+            minimum_points: m.minimum_points,
+            description: m.description,
+            extra_body: m.extra_body,
+            category_id: m.category_id,
+        },
       })
-      .catch(popupAjaxError)
-      .finally(() => (this.submitting = false));
-  }
+        .then((r) => {
+          this.set("created", true);
+          this.set("topicUrl", r.topic_url);
+        })
+        .catch(popupAjaxError)
+        .finally(() => this.set("submitting", false));
+    },
 
-  @action
-  goTopic() {
-    if (this.topicUrl) {
-      window.location = this.topicUrl;
-    }
-  }
-}
+    goTopic() {
+      const url = this.topicUrl;
+      if (url) {
+        window.location = url;
+      }
+    },
+  },
+});
