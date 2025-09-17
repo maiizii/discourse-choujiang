@@ -1,7 +1,8 @@
 # frozen_string_literal: true
+
 module DiscourseChoujiang
   class CreateController < ::ApplicationController
-    requires_plugin ::DiscourseChoujiang
+    requires_plugin :discourse_choujiang
 
     before_action :ensure_enabled
     before_action :ensure_logged_in
@@ -32,8 +33,11 @@ module DiscourseChoujiang
       raw_lines << "获奖人数：#{winners}"
       raw_lines << "开奖时间：#{draw_time}"
       raw_lines << "最低积分：#{min_points}" unless min_points.blank?
-      raw_lines << "简单说明：#{description.strip.gsub(/\r?\n+/, ' ')}" unless description.strip.empty?
-      raw_lines << "简单说明：" if description.strip.empty?
+      if description.strip.empty?
+        raw_lines << "简单说明："
+      else
+        raw_lines << "简单说明：#{description.strip.gsub(/\r?\n+/, ' ')}"
+      end
       raw_lines << "[/抽奖]"
       raw_lines << ""
       raw_lines << extra_body unless extra_body.blank?
@@ -50,6 +54,7 @@ module DiscourseChoujiang
 
       render json: { topic_id: post.topic.id, topic_url: post.topic.url }
     rescue => e
+      Rails.logger.error("[discourse-choujiang] create failed: #{e.class} #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}")
       render_json_error(e.message)
     end
 
