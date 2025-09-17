@@ -1,6 +1,6 @@
 import DiscourseRoute from "discourse/routes/discourse";
 
-export default class LotteryCreateRoute extends DiscourseRoute {
+export default DiscourseRoute.extend({
   model() {
     return {
       title: "",
@@ -10,7 +10,7 @@ export default class LotteryCreateRoute extends DiscourseRoute {
       minimum_points: "",
       description: "",
       extra_body: "",
-      category_id: null
+      category_id: null,
     };
-  }
-}
+  },
+});
