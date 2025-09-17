@@ -1,10 +1,9 @@
 zh_CN:
-  admin_js:
+  js:
     admin:
       site_settings:
         categories:
           discourse_choujiang: "抽奖"
-  js:
     choujiang:
       create:
         page_title: "发布抽奖活动"
