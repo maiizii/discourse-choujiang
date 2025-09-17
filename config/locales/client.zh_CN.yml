@@ -4,7 +4,6 @@ zh_CN:
       site_settings:
         categories:
           discourse_choujiang: "抽奖"
-zh_CN:
   js:
     choujiang:
       create:
