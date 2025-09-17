@@ -1,15 +1,16 @@
 import { withPluginApi } from "discourse/lib/plugin-api";
 
 export default {
-  name: "choujiang-create-link",
+  name: "lottery-create-link",
   initialize() {
     withPluginApi("1.8.0", (api) => {
-      // 仅已登录用户展示
+      api.onPageChange(() => {}); // 保证加载
+      // 显示给已登录用户（未登录访问直接输入 URL 也能看到提示）
       if (!api.getCurrentUser()) return;
       api.addHeaderDropdownEntry({
-        name: "choujiang-create",
+        name: "lottery-create",
         displayName: "发布抽奖",
-        href: "/choujiang/create",
+        href: "/lottery/create",
         icon: "gift"
       });
     });
