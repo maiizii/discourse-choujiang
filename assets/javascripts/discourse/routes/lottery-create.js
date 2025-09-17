@@ -1,12 +1,6 @@
 import DiscourseRoute from "discourse/routes/discourse";
 
-export default class ChoujiangCreateRoute extends DiscourseRoute {
-  beforeModel() {
-    if (!this.currentUser) {
-      this.replaceWith("login");
-    }
-  }
-
+export default class LotteryCreateRoute extends DiscourseRoute {
   model() {
     return {
       title: "",
