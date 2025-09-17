@@ -3,12 +3,17 @@ import { action } from "@ember/object";
 import { ajax } from "discourse/lib/ajax";
 import { popupAjaxError } from "discourse/lib/ajax-error";
 
-export default class ChoujiangCreateController extends Controller {
+export default class LotteryCreateController extends Controller {
   submitting = false;
   created = false;
   topicUrl = null;
 
+  get currentUserPresent() {
+    return !!this.currentUser;
+  }
+
   get canSubmit() {
+    if (!this.currentUserPresent) return false;
     const m = this.model;
     return m.title.trim() && m.prize.trim() && m.winners > 0 && m.draw_time.trim();
   }
@@ -16,9 +21,9 @@ export default class ChoujiangCreateController extends Controller {
   @action
   submit() {
     if (!this.canSubmit || this.submitting) return;
-    this.submitting = true;
 
-    ajax("/choujiang/create", {
+    this.submitting = true;
+    ajax("/lottery/create", {
       type: "POST",
       data: {
         title: this.model.title,
@@ -41,6 +46,8 @@ export default class ChoujiangCreateController extends Controller {
 
   @action
   goTopic() {
-    if (this.topicUrl) window.location = this.topicUrl;
+    if (this.topicUrl) {
+      window.location = this.topicUrl;
+    }
   }
 }
