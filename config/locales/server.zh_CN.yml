@@ -1,3 +1,6 @@
 zh_CN:
   choujiang:
     not_enough_candidates: "本次抽奖候选人数不足，未能开奖。"
+    create:
+      missing_fields: "必填字段缺失（抽奖名称/奖品/获奖人数/开奖时间）"
+      invalid_draw_time_format: "开奖时间格式必须为 YYYY-MM-DD HH:MM"
